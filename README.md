@@ -24,4 +24,4 @@ output {
 ```
 - Run Logstash.
 
-For more information about OpsGenie Logstash Integration, please refer to [support document]("https://www.opsgenie.com/docs/integrations/logstash-integration").
+For more information about OpsGenie Logstash Integration, please refer to [support document](https://www.opsgenie.com/docs/integrations/logstash-integration).
