@@ -31,10 +31,10 @@ require "net/https"
 #       "entity": "alert_entity",
 #       "user": "alert_owner",
 #       "note": "additional_alert_note"
-#       "details": {
-#           "extra_prop1": "value1",
-#           "extra_prop2": "value2"
-#       }
+#       "details": [
+#           "extra_prop1:value1",
+#           "extra_prop2:value2"
+#       ]
 #     }
 #
 # An alert with following properties will be created.
@@ -208,7 +208,19 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
     params['actions'] = event[@actionsAttribute] if event[@actionsAttribute]
     params['tags'] = event[@tagsAttribute] if event[@tagsAttribute]
     params['entity'] = event[@entityAttribute] if event[@entityAttribute]
-    params['details'] = event[@detailsAttribute] if event[@detailsAttribute]
+
+    if event[@detailsAttribute]
+      params['details'] = Hash.new
+      event[@detailsAttribute].each do |param|
+        if param.index(':') == nil then
+          @logger.warn("Will not parse #{param}, it is not a valid detail item. skipping..")
+        else
+          key = param[0..param.index(':')-1]
+          val = param[param.index(':')+1..-1]
+          params['details'][key] = val
+        end
+      end
+    end
     return params
   end
 
