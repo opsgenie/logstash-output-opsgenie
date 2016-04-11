@@ -133,6 +133,7 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
   # The value of this field holds the additional alert note.
   config :noteAttribute, :validate => :string, :required => false, :default => 'note'
 
+
   public
   def register
   end # def register
@@ -208,19 +209,8 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
     params['actions'] = event[@actionsAttribute] if event[@actionsAttribute]
     params['tags'] = event[@tagsAttribute] if event[@tagsAttribute]
     params['entity'] = event[@entityAttribute] if event[@entityAttribute]
+    params['details'] = event[@detailsAttribute] if event[@detailsAttribute]
 
-    if event[@detailsAttribute]
-      params['details'] = Hash.new
-      event[@detailsAttribute].each do |param|
-        if param.index(':') == nil then
-          @logger.warn("Will not parse #{param}, it is not a valid detail item. skipping..")
-        else
-          key = param[0..param.index(':')-1]
-          val = param[param.index(':')+1..-1]
-          params['details'][key] = val
-        end
-      end
-    end
     return params
   end
 
