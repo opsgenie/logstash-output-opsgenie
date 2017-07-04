@@ -72,6 +72,11 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
   # OpsGenie Logstash Integration API Key
   config :apiKey, :validate => :string, :required => true
 
+  # Proxy settings
+  config :proxy_address, :validate => :string, :required => false
+  config :proxy_port, :validate => :number, :required => false
+
+
   # Host of opsgenie api, normally you should not need to change this field.
   config :opsGenieBaseUrl, :validate => :string, :required => false, :default => 'https://api.opsgenie.com'
 
@@ -140,23 +145,23 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
 
   public
   def populateAliasOrId(event, params)
-    alertAlias = event[@aliasAttribute] if event[@aliasAttribute]
+    alertAlias = event.get(@aliasAttribute) if event.get(@aliasAttribute)
     if alertAlias == nil then
-      alertId = event[@alertIdAttribute] if event[@alertIdAttribute]
+      alertId = event.get(@alertIdAttribute) if event.get(@alertIdAttribute)
       if !(alertId == nil) then
         params['alertId'] = alertId;
       end
     else
       params['alias'] = alertAlias
     end
-  end#def populateAliasOrId
+  end # def populateAliasOrId
 
   public
   def executePost(uri, params)
     if not uri == nil then
       @logger.info("Executing url #{uri}")
       url = URI(uri)
-      http = Net::HTTP.new(url.host, url.port)
+      http = Net::HTTP.new(url.host, url.port, @proxy_address, @proxy_port)
       if url.scheme == 'https'
         http.use_ssl = true
         http.verify_mode = OpenSSL::SSL::VERIFY_NONE
@@ -168,19 +173,19 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
       body = JSON.parse(body)
       @logger.warn("Executed [#{uri}]. Response:[#{body}]")
     end
-  end#def executePost
+  end # def executePost
 
   public
   def receive(event)
     return unless output?(event)
     @logger.info("processing #{event}")
-    opsGenieAction = event[@actionAttribute] if event[@actionAttribute]
+    opsGenieAction = event.get(@actionAttribute) if event.get(@actionAttribute)
     if opsGenieAction then
       params = { :apiKey => @apiKey}
       case opsGenieAction.downcase
       when "create"
         uri = "#{@opsGenieBaseUrl}#{@createActionUrl}"
-        params = populateCreateAlertContent(params,event)
+        params = populateCreateAlertContent(params, event)
       when "close"
         uri = "#{@opsGenieBaseUrl}#{@closeActionUrl}"
       when "acknowledge"
@@ -201,25 +206,25 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
   end # def receive
 
   private
-  def populateCreateAlertContent(params,event)
-    params['message'] = event[@messageAttribute] if event[@messageAttribute]
-    params['teams'] = event[@teamsAttribute] if event[@teamsAttribute]
-    params['description'] = event[@descriptionAttribute] if event[@descriptionAttribute]
-    params['recipients'] = event[@recipientsAttribute] if event[@recipientsAttribute]
-    params['actions'] = event[@actionsAttribute] if event[@actionsAttribute]
-    params['tags'] = event[@tagsAttribute] if event[@tagsAttribute]
-    params['entity'] = event[@entityAttribute] if event[@entityAttribute]
-    params['details'] = event[@detailsAttribute] if event[@detailsAttribute]
+  def populateCreateAlertContent(params, event)
+    params['message'] = event.get(@messageAttribute) if event.get(@messageAttribute)
+    params['teams'] = event.get(@teamsAttribute) if event.get(@teamsAttribute)
+    params['description'] = event.get(@descriptionAttribute) if event.get(@descriptionAttribute)
+    params['recipients'] = event.get(@recipientsAttribute) if event.get(@recipientsAttribute)
+    params['actions'] = event.get(@actionsAttribute) if event.get(@actionsAttribute)
+    params['tags'] = event.get(@tagsAttribute) if event.get(@tagsAttribute)
+    params['entity'] = event.get(@entityAttribute) if event.get(@entityAttribute)
+    params['details'] = event.get(@detailsAttribute) if event.get(@detailsAttribute)
 
     return params
   end
 
   private
-  def populateCommonContent(params,event)
+  def populateCommonContent(params, event)
     populateAliasOrId(event, params)
-    params['source'] = event[@sourceAttribute] if event[@sourceAttribute]
-    params['user'] = event[@userAttribute] if event[@userAttribute]
-    params['note'] = event[@noteAttribute] if event[@noteAttribute]
+    params['source'] = event.get(@sourceAttribute) if event.get(@sourceAttribute)
+    params['user'] = event.get(@userAttribute) if event.get(@userAttribute)
+    params['note'] = event.get(@noteAttribute) if event.get(@noteAttribute)
   end
 
 end # class LogStash::Outputs::OpsGenie
