@@ -8,62 +8,62 @@ require "net/https"
 
 # The OpsGenie output is used to Create, Close, Acknowledge Alerts and Add Note to alerts in OpsGenie.
 # For this output to work, your event must contain "opsgenieAction" field and you must configure apiKey field in configuration.
-#   If opsgenieAction is "create", event must contain "message" field.
-#   For other actions ("close", "acknowledge" or "note"), event must contain "alias" or "alertId" field.
+# If opsgenieAction is "create", event must contain "message" field.
+# For other actions ("close", "acknowledge" or "note"), event must contain "alias" or "alertId" field.
 #
 # If your event have the following fields (If you use default field names).
 #
-# Example JSON-encoded event:
+# Example event:
 #
-#     {
-#       "message": "alert_message",
-#       "@version": "1",
-#       "@timestamp": "2015-09-22T11:20:00.250Z",
-#       "host": "192.168.1.1",
-#       "opsgenieAction": "create",
-#       "alias": "alert_alias",
-#       "teams": ["teams"],
-#       "recipients": "the-recipients",
-#       "description": "alert_description",
-#       "actions": ["actions"],
-#       "source": "alert_source",
-#       "tags": ["tags"],
-#       "entity": "alert_entity",
-#       "user": "alert_owner",
-#       "note": "additional_alert_note"
-#       "details": [
-#           "extra_prop1:value1",
-#           "extra_prop2:value2"
-#       ]
-#     }
+# {
+#    "note" => "test note",
+#    "opsgenieAction" => "create",
+#    "teams" => ["teams"],
+#    "description" => "test description",
+#    "source" => "test source",
+#    "message" => "test message",
+#    "priority" => "P4",
+#    "tags" => ["tags"],
+#    "@timestamp" => 2017-09-15T13:32:00.747Z,
+#    "@version" => "1",
+#    "host" => "Neo's-MacBook-Pro.local",
+#    "alias" => "test-alias",
+#    "details" => {
+#    "prop2" => "val2",
+#    "prop1" => "val1"
+# },
+#    "actions" => ["actions"],
+#    "user" => "test user",
+#    "entity" => "test entity"
+# }
 #
 # An alert with following properties will be created.
 #
 #     {
-#       "message": "alert_message",
-#       "alias": "alert_alias",
+#       "message": "test message",
+#       "alias": "test alias",
 #       "teams": ["teams"],
-#       "description": "alert_description",
-#       "source": "alert_source",
+#       "description": "test description",
+#       "source": "test source",
+#       "note": "test note",
+#       "user": "test user",
+#       "priority": "P4",
 #       "tags": [
 #         "tags"
 #       ],
-#       "recipients": [
-#         "the-recipients"
-#       ],
 #       "details": {
-#         "extra_prop1": "value1",
-#         "extra_prop2": "value2"
+#         "prop2": "val2",
+#         "prop1": "val1"
 #       },
 #       "actions": [
 #         "actions"
 #       ],
-#       "entity": "alert_entity",
+#       "entity": "test entity",
 #     }
 #
 # Fields with prefix "Attribute" are the keys of the fields will be extracted from Logstash event.
 # For more information about the api requests and their contents,
-# please refer to Alert API("https://www.opsgenie.com/docs/web-api/alert-api") support doc.
+# please refer to Alert API("https://docs.opsgenie.com/docs/alert-api") support doc.
 
 class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
 
@@ -78,24 +78,26 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
 
 
   # Host of opsgenie api, normally you should not need to change this field.
-  config :opsGenieBaseUrl, :validate => :string, :required => false, :default => 'https://api.opsgenie.com'
-
-  # Url will be used to create alerts in OpsGenie
-  config :createActionUrl, :validate => :string, :required => false, :default =>'/v1/json/alert'
+  config :opsGenieBaseUrl, :validate => :string, :required => false, :default => 'https://api.opsgenie.com/v2/alerts/'
 
   # Url will be used to close alerts in OpsGenie
-  config :closeActionUrl, :validate => :string, :required => false, :default =>'/v1/json/alert/close'
+  config :closeActionPath, :validate => :string, :required => false, :default =>'/close'
 
   # Url will be used to acknowledge alerts in OpsGenie
-  config :acknowledgeActionUrl, :validate => :string, :required => false, :default =>'/v1/json/alert/acknowledge'
+  config :acknowledgeActionPath, :validate => :string, :required => false, :default =>'/acknowledge'
 
   # Url will be used to add notes to alerts in OpsGenie
-  config :noteActionUrl, :validate => :string, :required => false, :default =>'/v1/json/alert/note'
-
+  config :noteActionPath, :validate => :string, :required => false, :default =>'/notes'
 
   # The value of this field holds the name of the action will be executed in OpsGenie.
   # This field must be in Event object. Should be one of "create", "close", "acknowledge" or "note". Other values will be discarded.
   config :actionAttribute, :validate => :string, :required => false, :default => 'opsgenieAction'
+
+  # This value specifies the query parameter identifierType
+  config :identifierType, :validate => :string, :required => false, :default =>'id'
+
+  # This value will be set to eventual identifier according to event(id/alias).
+  config :identifier, :validate => :string, :required => false, :default =>''
 
   # The value of this field holds the Id of the alert that actions will be executed.
   # One of "alertId" or "alias" field must be in Event object, except from "create" action
@@ -111,17 +113,21 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
   # The value of this field holds the list of team names which will be responsible for the alert.
   config :teamsAttribute, :validate => :string, :required => false, :default => 'teams'
 
+  # The value of this field holds the Teams and users that the alert will become
+  # visible to without sending any notification.
+  config :visibleToAttribute, :validate => :string, :required => false, :default => 'visibleTo'
+
   # The value of this field holds the detailed description of the alert.
   config :descriptionAttribute, :validate => :string, :required => false, :default => 'description'
-
-  # The value of this field holds the optional user, group, schedule or escalation names to calculate which users will receive the notifications of the alert.
-  config :recipientsAttribute, :validate => :string, :required => false, :default => 'recipients'
 
   # The value of this field holds the comma separated list of actions that can be executed on the alert.
   config :actionsAttribute, :validate => :string, :required => false, :default => 'actions'
 
   # The value of this field holds the source of alert. By default, it will be assigned to IP address of incoming request.
   config :sourceAttribute, :validate => :string, :required => false, :default => 'source'
+
+  # The value of this field holds the priority level of the alert
+  config :priorityAttribute, :validate => :string, :required => false, :default => 'priority'
 
   # The value of this field holds the comma separated list of labels attached to the alert.
   config :tagsAttribute, :validate => :string, :required => false, :default => 'tags'
@@ -149,16 +155,18 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
     if alertAlias == nil then
       alertId = event.get(@alertIdAttribute) if event.get(@alertIdAttribute)
       if !(alertId == nil) then
-        params['alertId'] = alertId;
+        @identifierType = 'id'
+        @identifier = alertId
       end
     else
-      params['alias'] = alertAlias
+      @identifierType = 'alias'
+      @identifier = alertAlias
     end
   end # def populateAliasOrId
 
   public
   def executePost(uri, params)
-    if not uri == nil then
+    unless uri == nil then
       @logger.info("Executing url #{uri}")
       url = URI(uri)
       http = Net::HTTP.new(url.host, url.port, @proxy_address, @proxy_port)
@@ -166,7 +174,7 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
         http.use_ssl = true
         http.verify_mode = OpenSSL::SSL::VERIFY_NONE
       end
-      request = Net::HTTP::Post.new(url.path)
+      request = Net::HTTP::Post.new(url.request_uri, initheader = { "Content-Type" =>"application/json", "Authorization" => "GenieKey #{@apiKey}" })
       request.body = params.to_json
       response = http.request(request)
       body = response.body
@@ -178,26 +186,28 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
   public
   def receive(event)
     return unless output?(event)
+
     @logger.info("processing #{event}")
     opsGenieAction = event.get(@actionAttribute) if event.get(@actionAttribute)
     if opsGenieAction then
-      params = { :apiKey => @apiKey}
+      params = {}
+      populateCommonContent(params, event)
+
       case opsGenieAction.downcase
       when "create"
-        uri = "#{@opsGenieBaseUrl}#{@createActionUrl}"
+        uri = "#{@opsGenieBaseUrl}"
         params = populateCreateAlertContent(params, event)
       when "close"
-        uri = "#{@opsGenieBaseUrl}#{@closeActionUrl}"
+        uri = "#{@opsGenieBaseUrl}#{@identifier}#{@closeActionPath}?identifierType=#{@identifierType}"
       when "acknowledge"
-        uri = "#{@opsGenieBaseUrl}#{@acknowledgeActionUrl}"
+        uri = "#{@opsGenieBaseUrl}#{@identifier}#{@acknowledgeActionPath}?identifierType=#{@identifierType}"
       when "note"
-        uri = "#{@opsGenieBaseUrl}#{@noteActionUrl}"
+        uri = "#{@opsGenieBaseUrl}#{@identifier}#{@noteActionPath}?identifierType=#{@identifierType}"
       else
         @logger.warn("Action #{opsGenieAction} does not match any available action, discarding..")
           return
       end
 
-      populateCommonContent(params, event)
       executePost(uri, params)
     else
       @logger.warn("No opsgenie action defined")
@@ -208,13 +218,16 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
   private
   def populateCreateAlertContent(params, event)
     params['message'] = event.get(@messageAttribute) if event.get(@messageAttribute)
+    params['alias'] = event.get(@aliasAttribute) if event.get(@aliasAttribute)
     params['teams'] = event.get(@teamsAttribute) if event.get(@teamsAttribute)
+    params['visibleTo'] = event.get(@visibleToAttribute) if event.get(@visibleToAttribute)
     params['description'] = event.get(@descriptionAttribute) if event.get(@descriptionAttribute)
-    params['recipients'] = event.get(@recipientsAttribute) if event.get(@recipientsAttribute)
     params['actions'] = event.get(@actionsAttribute) if event.get(@actionsAttribute)
     params['tags'] = event.get(@tagsAttribute) if event.get(@tagsAttribute)
     params['entity'] = event.get(@entityAttribute) if event.get(@entityAttribute)
+    params['priority'] = event.get(@priorityAttribute) if event.get(@priorityAttribute)
     params['details'] = event.get(@detailsAttribute) if event.get(@detailsAttribute)
+
 
     return params
   end
