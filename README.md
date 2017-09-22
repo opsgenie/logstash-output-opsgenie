@@ -40,7 +40,8 @@ bin/logstash-plugin install logstash-output-opsgenie
     ruby {
  	 code => "event.set('teams', [{'name' => 'Integration'}, {'name' => 'Platform'}])"
     }
-}```
+}
+```
 
 - Add the following configuration to your configuration file and populate "apiKey" field with your Logstash Integration API Key
 ```sh
