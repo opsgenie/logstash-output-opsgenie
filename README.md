@@ -10,11 +10,11 @@ OpsGenie Logstash Output plugin is available in [RubyGems.org](https://rubygems.
 
 - `Logstash 5.4+`
 ```sh
-bin/plugin install logstash-output-opsgenie
+bin/logstash-plugin install logstash-output-opsgenie
 ```
 - `Other Versions`
 ```sh
-bin/logstash-plugin install logstash-output-opsgenie
+bin/plugin install logstash-output-opsgenie
 ```
 
 - OpsGenie has an integration with Logstash. To use the plugin you need to add a [Logstash Integration](https://app.opsgenie.com/integration?add=Logstash) in OpsGenie and obtain the API Key.
