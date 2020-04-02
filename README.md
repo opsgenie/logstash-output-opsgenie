@@ -47,7 +47,7 @@ bin/plugin install logstash-output-opsgenie
 ```sh
 output {
 	opsgenie {
-		"apiKey" => "logstash_integration_api_key"
+		apiKey => "logstash_integration_api_key"
 	}
 }
 ```
