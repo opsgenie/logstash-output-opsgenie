@@ -231,7 +231,7 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
   def receive(event)
     return unless output?(event)
 
-    @logger.info("processing #{event}")
+    @logger.info("processing event: #{event}")
     opsGenieAction = event.get(@actionAttribute) if event.get(@actionAttribute)
     if opsGenieAction then
       params = {}
