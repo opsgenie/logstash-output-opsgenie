@@ -6,6 +6,27 @@ require "uri"
 require "net/http"
 require "net/https"
 
+
+HTTP_EXCEPTIONS = [
+  Errno::EINVAL,
+  Net::HTTPBadResponse,
+  Net::HTTPHeaderSyntaxError,
+]
+
+RETRYABLE_HTTP_EXCEPTIONS = [
+  OpenSSL::SSL::SSLError,
+  EOFError,
+  Timeout::Error,
+  Errno::ETIMEDOUT,
+  Errno::ECONNRESET,
+  Errno::ECONNREFUSED,
+  Net::ProtocolError,
+  SocketError,
+  EOFError
+]
+
+HTTP_EXCEPTION_RETRIES = 5
+
 # The OpsGenie output is used to Create, Close, Acknowledge Alerts and Add Note to alerts in OpsGenie.
 # For this output to work, your event must contain "opsgenieAction" field and you must configure apiKey field in configuration.
 # If opsgenieAction is "create", event must contain "message" field.
@@ -174,9 +195,32 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
         http.use_ssl = true
         http.verify_mode = OpenSSL::SSL::VERIFY_NONE
       end
-      request = Net::HTTP::Post.new(url.request_uri, initheader = { "Content-Type" =>"application/json", "Authorization" => "GenieKey #{@apiKey}" })
-      request.body = params.to_json
-      response = http.request(request)
+
+      retryCount = 0
+      begin
+        request = Net::HTTP::Post.new(
+          url.request_uri,
+          initheader = { "Content-Type" =>"application/json", "Authorization" => "GenieKey #{@apiKey}" }
+        )
+        request.body = params.to_json
+        response = http.request(request)
+      rescue *HTTP_EXCEPTIONS => e
+        @logger.warn("Silencing exception in logstash opsgenie outputs: [#{e.class}: #{e.message}]")
+        return
+      rescue *RETRYABLE_HTTP_EXCEPTIONS => e
+        if retryCount < HTTP_EXCEPTION_RETRIES
+          retryCount += 1
+          @logger.warn("Caught #{e.class}: #{e.message} - Retrying...")
+          exponentialBackoff(retryCount)
+          retry
+        else
+          @logger.warn(
+            "Silencing exception in logstash opsgenie outputs after #{HTTP_EXCEPTION_RETRIES} retries: [#{e.class}: #{e.message}]"
+          )
+          return
+        end
+      end
+
       body = response.body
       body = JSON.parse(body)
       @logger.warn("Executed [#{uri}]. Response:[#{body}]")
@@ -187,7 +231,7 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
   def receive(event)
     return unless output?(event)
 
-    @logger.info("processing #{event}")
+    @logger.info("processing event: #{event}")
     opsGenieAction = event.get(@actionAttribute) if event.get(@actionAttribute)
     if opsGenieAction then
       params = {}
@@ -238,6 +282,13 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
     params['source'] = event.get(@sourceAttribute) if event.get(@sourceAttribute)
     params['user'] = event.get(@userAttribute) if event.get(@userAttribute)
     params['note'] = event.get(@noteAttribute) if event.get(@noteAttribute)
+  end
+
+  private
+  def exponentialBackoff(retryCount)
+    seconds_to_sleep = (2**retryCount - 1) / 2
+    @logger.info("sleeping for #{'%.2f' % seconds_to_sleep} seconds")
+    sleep seconds_to_sleep
   end
 
 end # class LogStash::Outputs::OpsGenie

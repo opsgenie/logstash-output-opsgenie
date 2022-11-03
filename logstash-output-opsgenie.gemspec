@@ -1,12 +1,11 @@
 Gem::Specification.new do |s|
-  s.name = 'logstash-output-opsgenie'
-  s.version         = '3.0.0'
-  s.licenses = ["Apache License (2.0)"]
-  s.summary = "This output Creates, Closes, Acknowledges alerts and Adds Note to alerts in OpsGenie."
-  s.description = "This gem is a logstash plugin required to be installed on top of the Logstash core pipeline using $LS_HOME/bin/logstash-plugin install gemname. This gem is not a stand-alone program"
-  s.authors = ["Elastic"]
-  s.email = "info@elastic.co"
-  s.homepage = "http://www.elastic.co/guide/en/logstash/current/index.html"
+  s.name = 'flexciton-logstash-output-opsgenie'
+  s.version = '1.0.1'
+  s.licenses = ["Apache-2.0"]
+  s.summary = "Flexciton Logstash Output Opsgenie plugin allows creation, closing, acknowledging and adding notes to alerts in OpsGenie."
+  s.description = "Install this gem on your Logstash instance with: $LS_HOME/bin/logstash-plugin install flexciton-logstash-output-opsgenie. Includes retry and silencing mechanism for network errors."
+  s.authors = ["Flexciton Ltd, Tomasz Kluczkowski"]
+  s.homepage = "https://github.com/flexciton/logstash-output-opsgenie"
   s.require_paths = ["lib"]
 
   # Files
