@@ -286,9 +286,9 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
 
   private
   def exponentialBackoff(retryCount)
-    nap = (2**retryCount - 1) / 2
-    @logger.info("sleeping for #{'%.2f' % nap} seconds")
-    sleep nap
+    seconds_to_sleep = (2**retryCount - 1) / 2
+    @logger.info("sleeping for #{'%.2f' % seconds_to_sleep} seconds")
+    sleep seconds_to_sleep
   end
 
 end # class LogStash::Outputs::OpsGenie
