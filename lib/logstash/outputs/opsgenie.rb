@@ -7,10 +7,11 @@ require "net/http"
 require "net/https"
 
 
-HTTP_EXCEPTIONS = [
+CATCHABLE_EXCEPTIONS = [
   Errno::EINVAL,
   Net::HTTPBadResponse,
   Net::HTTPHeaderSyntaxError,
+  JSON::ParserError,
 ]
 
 RETRYABLE_HTTP_EXCEPTIONS = [
@@ -204,7 +205,11 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
         )
         request.body = params.to_json
         response = http.request(request)
-      rescue *HTTP_EXCEPTIONS => e
+
+        body = response.body
+        body = JSON.parse(body)
+        @logger.warn("Executed [#{uri}]. Response:[#{body}]")
+      rescue *CATCHABLE_EXCEPTIONS => e
         @logger.warn("Silencing exception in logstash opsgenie outputs: [#{e.class}: #{e.message}]")
         return
       rescue *RETRYABLE_HTTP_EXCEPTIONS => e
@@ -221,9 +226,6 @@ class LogStash::Outputs::OpsGenie < LogStash::Outputs::Base
         end
       end
 
-      body = response.body
-      body = JSON.parse(body)
-      @logger.warn("Executed [#{uri}]. Response:[#{body}]")
     end
   end # def executePost
 
