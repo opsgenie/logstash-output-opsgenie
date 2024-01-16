@@ -9,6 +9,7 @@ All kudos goes to the original authors.
 
 `flexciton-logstash-output-opsgenie` improvements:
 - Add error handling on network errors. Previously the pipeline in `Logstash` would simply crash and cause `Logstash` to go down or stop processing logs completely. Now it will retry certain errors or log a warning and silence the exception.
+- Add error handling on bad response from OpsGenie itself. Since the response is logged via parsing to json, if parsing is impossible we would crash the pipeline. Now json parsing errors are caught and logged instead at warning level.
 - Fix all tests. Tests were broken since 2017 changes to adjust to new Opsgenie API. Now they pass.
 
 ### Install and Run Flexciton Logstash Output OpsGenie in Logstash
