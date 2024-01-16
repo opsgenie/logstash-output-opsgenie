@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'flexciton-logstash-output-opsgenie'
-  s.version = '1.0.1'
+  s.version = '2.0.0'
   s.licenses = ["Apache-2.0"]
   s.summary = "Flexciton Logstash Output Opsgenie plugin allows creation, closing, acknowledging and adding notes to alerts in OpsGenie."
   s.description = "Install this gem on your Logstash instance with: $LS_HOME/bin/logstash-plugin install flexciton-logstash-output-opsgenie. Includes retry and silencing mechanism for network errors."
